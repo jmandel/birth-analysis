@@ -2,21 +2,22 @@
 
 This code analyzes delivery methods and timing for births to mothers aged 39-42 with normal BMI and masters+ education.
 
+<img src="./delivery_analysis.png?raw=true" />
+
 ## Data Preparation
 
-1. Download the 2023 Natality Public Use File:
-   - Visit the CDC Wonder website
-   - Download `nat2023us.zip`
+1. Download https://ftp.cdc.gov/pub/health_statistics/nchs/datasets/dvs/natality/Nat2023us.zip
 
 2. Prepare the data file:
    ```bash
-   unzip nat2023us.zip
-   mv "VS23NATL.DETL.PUB" Nat2023us.txt
+   unzip Nnat2023us.zip
+   mv Nat2023PublicUS.c20240509.r20240724.txt Nat2023us.txt
    ```
 
 ## Sample Results
 
 ```
+$ python analysis.py
 Weekly Delivery Statistics:
 
 Week 34 (Births: 300, 1.5% of population)
@@ -103,3 +104,4 @@ Key fields used:
 - Gestation (COMBGEST)
 - Delivery Route (ME_ROUT)
 - Induction Status (LD_INDL)
+
