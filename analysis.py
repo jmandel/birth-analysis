@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import json
 
 def read_natality_data(filepath):
     """Read fixed-width natality data file focusing on relevant fields"""
@@ -118,8 +119,95 @@ def analyze_and_plot_deliveries(df):
     plt.tight_layout()
     return fig
 
+def generate_json_data(df):
+    """Generate JSON data for interactive filtering"""
+    
+    # Define the dimensions we want to capture
+    age_ranges = [(15,19), (20,24), (25,29), (30,34), (35,38), (39,42), (43,50)]
+    bmi_categories = {
+        1: "Underweight",
+        2: "Normal",
+        3: "Overweight",
+        4: "Obese"
+    }
+    education_levels = {
+        1: "8th grade or less",
+        2: "9-12th grade, no diploma",
+        3: "High school graduate/GED",
+        4: "Some college, no degree",
+        5: "Associate degree",
+        6: "Bachelor's degree",
+        7: "Master's degree",
+        8: "Doctorate/Professional degree"
+    }
+    
+    # Initialize data structure
+    data = {
+        "metadata": {
+            "age_ranges": age_ranges,
+            "bmi_categories": bmi_categories,
+            "education_levels": education_levels,
+            "delivery_types": [
+                "Vaginal Non-Operative-No Induction",
+                "Vaginal Non-Operative-Induced",
+                "Vaginal Operative-No Induction",
+                "Vaginal Operative-Induced",
+                "C-Section-No Induction",
+                "C-Section-Induced"
+            ]
+        },
+        "data": {}
+    }
+    
+    # Calculate counts for each combination
+    for age_range in age_ranges:
+        age_key = f"{age_range[0]}-{age_range[1]}"
+        data["data"][age_key] = {}
+        
+        for bmi in bmi_categories.keys():
+            data["data"][age_key][str(bmi)] = {}
+            
+            for edu in education_levels.keys():
+                filtered_df = df[
+                    (df['mage'].between(age_range[0], age_range[1])) &
+                    (df['bmi_r'] == bmi) &
+                    (df['education'] == edu) &
+                    (df['gestation'].between(34, 42))
+                ]
+                
+                # Skip if no data for this combination
+                if len(filtered_df) == 0:
+                    continue
+                
+                weekly_data = {}
+                for week in range(34, 43):
+                    week_births = filtered_df[filtered_df['gestation'] == week]
+                    
+                    delivery_counts = {
+                        "Vaginal Non-Operative-No Induction": len(week_births[(week_births['me_rout'] == 1) & (week_births['ld_indl'] == 'N')]),
+                        "Vaginal Non-Operative-Induced": len(week_births[(week_births['me_rout'] == 1) & (week_births['ld_indl'] == 'Y')]),
+                        "Vaginal Operative-No Induction": len(week_births[week_births['me_rout'].isin([2,3]) & (week_births['ld_indl'] == 'N')]),
+                        "Vaginal Operative-Induced": len(week_births[week_births['me_rout'].isin([2,3]) & (week_births['ld_indl'] == 'Y')]),
+                        "C-Section-No Induction": len(week_births[(week_births['me_rout'] == 4) & (week_births['ld_indl'] == 'N')]),
+                        "C-Section-Induced": len(week_births[(week_births['me_rout'] == 4) & (week_births['ld_indl'] == 'Y')])
+                    }
+                    
+                    if sum(delivery_counts.values()) > 0:  # Only include weeks with data
+                        weekly_data[str(week)] = delivery_counts
+                
+                data["data"][age_key][str(bmi)][str(edu)] = weekly_data
+    
+    return data
+
 def main():
     df = read_natality_data("Nat2023us.txt")
+    
+    # Generate and save JSON data
+    json_data = generate_json_data(df)
+    with open('birth_data.json', 'w') as f:
+        json.dump(json_data, f)
+    
+    # Original visualization code can stay...
     fig = analyze_and_plot_deliveries(df)
     fig.savefig('delivery_analysis.png', dpi=300, bbox_inches='tight')
     plt.close()
